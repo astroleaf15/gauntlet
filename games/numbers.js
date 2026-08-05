@@ -1,9 +1,9 @@
-/* Gauntlet stage: Numbers rush. 1–100 scattered on a 10×10 grid — click them
+/* Gauntlet stage: Numbers rush. 1–36 scattered on a 6×6 grid — click them
  * in order as fast as you can. */
 (() => {
   'use strict';
 
-  const N = 100;
+  const N = 36;
 
   function create(container, { rng, onWin }) {
     const order = window.GCore.shuffle(
@@ -38,7 +38,7 @@
       const n = Number(b.dataset.n);
       if (n === next) {
         b.classList.add('found');
-        b.style.setProperty('--found-hue', String((n * 3.6 + 210) % 360));
+        b.style.setProperty('--found-hue', String((n * 10 + 210) % 360));
         next++;
         foundEl.textContent = n;
         if (next > N) {
@@ -67,7 +67,7 @@
     key: 'numbers',
     name: 'Numbers Rush',
     icon: '🔢',
-    blurb: 'Click 1 through 100 in order. Wrong clicks just cost you time.',
+    blurb: 'Click 1 through 36 in order. Wrong clicks just cost you time.',
     create,
   };
 })();

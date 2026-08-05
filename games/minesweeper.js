@@ -1,11 +1,115 @@
-/* Gauntlet stage: Minesweeper (9×9, 10 mines). First click is always safe.
- * Hitting a mine deals a fresh board — the run clock keeps ticking. */
+/* Gauntlet stage: Minesweeper (11×11, 15 mines). First click is always safe,
+ * and boards are vetted so they can be fully cleared by pure deduction — no
+ * guessing ever required. Hitting a mine deals a fresh board; the run clock
+ * keeps ticking. */
 (() => {
   'use strict';
 
-  const W = 9;
-  const H = 9;
-  const MINES = 10;
+  const W = 11;
+  const H = 11;
+  const MINES = 15;
+  const GEN_ATTEMPTS = 600;
+
+  function neighborsOf(i) {
+    const x = i % W;
+    const y = (i / W) | 0;
+    const out = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx >= 0 && nx < W && ny >= 0 && ny < H) out.push(ny * W + nx);
+      }
+    }
+    return out;
+  }
+  const NEIGHBORS = Array.from({ length: W * H }, (_, i) => neighborsOf(i));
+
+  function makeCounts(mines) {
+    const counts = new Int8Array(W * H);
+    for (let i = 0; i < W * H; i++) {
+      counts[i] = mines[i] ? -1 : NEIGHBORS[i].filter((n) => mines[n]).length;
+    }
+    return counts;
+  }
+
+  // Can this layout be fully cleared from `start` by deduction alone?
+  // Rules used: (a) a satisfied number's unknowns are safe, (b) a number
+  // whose remaining count equals its unknowns marks them all as mines,
+  // (c) subset rule — if constraint A's cells ⊂ B's cells, the difference
+  // is forced. These are exactly the deductions a human can make locally.
+  function solvableWithoutGuessing(mines, counts, start) {
+    const open = new Uint8Array(W * H);
+    const known = new Uint8Array(W * H); // deduced mines
+    let openCount = 0;
+
+    function flood(i) {
+      const stack = [i];
+      while (stack.length) {
+        const c = stack.pop();
+        if (open[c]) continue;
+        open[c] = 1;
+        openCount++;
+        if (counts[c] === 0) for (const n of NEIGHBORS[c]) if (!open[n]) stack.push(n);
+      }
+    }
+    flood(start);
+
+    for (;;) {
+      if (openCount === W * H - MINES) return true;
+      let progress = false;
+      const cons = [];
+      for (let i = 0; i < W * H; i++) {
+        if (!open[i] || counts[i] <= 0) continue;
+        const unk = [];
+        let rem = counts[i];
+        for (const n of NEIGHBORS[i]) {
+          if (known[n]) rem--;
+          else if (!open[n]) unk.push(n);
+        }
+        if (!unk.length) continue;
+        if (rem === 0) {
+          for (const n of unk) if (!open[n]) flood(n);
+          progress = true;
+        } else if (rem === unk.length) {
+          for (const n of unk) {
+            if (!known[n]) {
+              known[n] = 1;
+              progress = true;
+            }
+          }
+        } else {
+          cons.push({ cells: unk, n: rem });
+        }
+      }
+      if (progress) continue;
+
+      // Subset rule.
+      outer: for (let a = 0; a < cons.length && !progress; a++) {
+        for (let b = 0; b < cons.length; b++) {
+          if (a === b) continue;
+          const A = cons[a];
+          const B = cons[b];
+          if (A.cells.length >= B.cells.length) continue;
+          const bset = new Set(B.cells);
+          if (!A.cells.every((c) => bset.has(c))) continue;
+          const diff = B.cells.filter((c) => !A.cells.includes(c));
+          if (B.n - A.n === diff.length) {
+            for (const c of diff) known[c] = 1;
+            progress = true;
+            break outer;
+          }
+          if (B.n === A.n) {
+            for (const c of diff) if (!open[c]) flood(c);
+            progress = true;
+            break outer;
+          }
+        }
+      }
+      if (!progress) return false;
+    }
+  }
 
   function create(container, { rng, onWin }) {
     let mines = null; // Uint8Array, placed on first reveal
@@ -21,7 +125,7 @@
 
     container.innerHTML = `
       <div class="stage-top">
-        <span class="stage-hint">💣 <b class="ms-count">${MINES}</b> · attempt <b class="ms-attempt">1</b></span>
+        <span class="stage-hint">💣 <b class="ms-count">${MINES}</b> · attempt <b class="ms-attempt">1</b> · <span class="ms-noguess">no guessing needed</span></span>
         <button class="btn subtle small ms-flagmode" title="Toggle flag mode (or right-click / long-press a cell)">🚩 off</button>
       </div>
       <div class="ms-wrap">
@@ -34,6 +138,7 @@
     const countEl = container.querySelector('.ms-count');
     const attemptEl = container.querySelector('.ms-attempt');
     const flagBtn = container.querySelector('.ms-flagmode');
+    gridEl.style.gridTemplateColumns = `repeat(${W}, 1fr)`;
 
     const cells = [];
     for (let i = 0; i < W * H; i++) {
@@ -44,31 +149,21 @@
       cells.push(b);
     }
 
-    function neighbors(i) {
-      const x = i % W;
-      const y = (i / W) | 0;
-      const out = [];
-      for (let dy = -1; dy <= 1; dy++) {
-        for (let dx = -1; dx <= 1; dx++) {
-          if (!dx && !dy) continue;
-          const nx = x + dx;
-          const ny = y + dy;
-          if (nx >= 0 && nx < W && ny >= 0 && ny < H) out.push(ny * W + nx);
-        }
-      }
-      return out;
-    }
-
     function placeMines(safe) {
-      const banned = new Set([safe, ...neighbors(safe)]);
+      const banned = new Set([safe, ...NEIGHBORS[safe]]);
       const pool = [];
       for (let i = 0; i < W * H; i++) if (!banned.has(i)) pool.push(i);
-      window.GCore.shuffle(pool, rng);
-      mines = new Uint8Array(W * H);
-      for (let k = 0; k < MINES; k++) mines[pool[k]] = 1;
-      for (let i = 0; i < W * H; i++) {
-        counts[i] = mines[i] ? -1 : neighbors(i).filter((n) => mines[n]).length;
+      let fallback = null;
+      for (let attemptNo = 0; attemptNo < GEN_ATTEMPTS; attemptNo++) {
+        window.GCore.shuffle(pool, rng);
+        const m = new Uint8Array(W * H);
+        for (let k = 0; k < MINES; k++) m[pool[k]] = 1;
+        const c = makeCounts(m);
+        fallback = { m, c };
+        if (solvableWithoutGuessing(m, c, safe)) break;
       }
+      mines = fallback.m;
+      counts = fallback.c;
     }
 
     function resetBoard() {
@@ -94,15 +189,15 @@
         const c = stack.pop();
         if (open[c] || flags[c]) continue;
         open[c] = 1;
-        if (counts[c] === 0) for (const n of neighbors(c)) if (!open[n]) stack.push(n);
+        if (counts[c] === 0) for (const n of NEIGHBORS[c]) if (!open[n]) stack.push(n);
       }
       checkWin();
     }
 
     function chord(i) {
-      const flagCount = neighbors(i).filter((n) => flags[n]).length;
+      const flagCount = NEIGHBORS[i].filter((n) => flags[n]).length;
       if (flagCount !== counts[i]) return;
-      for (const n of neighbors(i)) {
+      for (const n of NEIGHBORS[i]) {
         if (!flags[n] && !open[n]) {
           if (mines[n]) {
             boom(n);
@@ -242,7 +337,8 @@
     key: 'minesweeper',
     name: 'Minesweeper',
     icon: '💣',
-    blurb: 'Clear all safe cells. Numbers count adjacent mines. Boom = fresh board, clock keeps running.',
+    blurb: 'Clear all safe cells — every board is solvable without guessing. Boom = fresh board, clock keeps running.',
     create,
+    _test: { W, H, MINES, NEIGHBORS, makeCounts, solvableWithoutGuessing },
   };
 })();

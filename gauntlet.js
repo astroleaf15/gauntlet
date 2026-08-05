@@ -7,6 +7,11 @@
   const STAGES = [
     window.GauntletGames.shikaku,
     window.GauntletGames.minesweeper,
+    window.GauntletGames.zip,
+    window.GauntletGames.wordhunt,
+    window.GauntletGames.tango,
+    window.GauntletGames.horse,
+    window.GauntletGames.typing,
     window.GauntletGames.numbers,
   ];
 

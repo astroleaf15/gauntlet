@@ -7,14 +7,29 @@ the world gets the same daily run — how fast can you finish?
 
 ## Today's stages
 
-1. 🟦 **Shikaku** (7×7) — drag boxes so every number sits alone in a box of
-   exactly that area, tiling the whole grid. Generated with a guaranteed
-   unique solution.
-2. 💣 **Minesweeper** (9×9, 10 mines) — clear every safe cell. Your first
-   click is always safe. Hitting a mine deals a fresh board; the clock keeps
-   running.
-3. 🔢 **Numbers Rush** — the numbers 1–100 scattered on a 10×10 grid. Click
-   them in order.
+1. 🟦 **Shikaku** (9×9) — drag boxes so every number sits alone in a box of
+   exactly that area, tiling the whole grid. Guaranteed unique solution.
+2. 💣 **Minesweeper** (11×11, 15 mines) — clear every safe cell. First click
+   is always safe, and every board is vetted by a deduction solver so **no
+   guessing is ever required**. Hitting a mine deals a fresh board; the clock
+   keeps running.
+3. ➿ **Zip** (6×6) — draw one continuous path that hits the numbered dots in
+   order and covers every cell (LinkedIn-Zip-style). Boards are random
+   Hamiltonian paths made with the backbite algorithm.
+4. 🔤 **Word Hunt** — a 4×4 Boggle-dice board; drag through adjacent letters
+   to spell words (ENABLE dictionary). Reach 5,000 points to move on. Boards
+   are vetted to have several times that available.
+5. 🌗 **Tango** (6×6) — fill the grid with suns and moons: three of each per
+   row/column, never three alike together, and `=` / `×` pair constraints
+   (LinkedIn-Tango-style). Unique solution guaranteed.
+6. 🐴 **Horse Pen** — inspired by [enclose.horse](https://enclose.horse):
+   fence in the horse with a limited fence budget so it can't reach the edge —
+   and give it at least the target number of tiles to graze. Water is a free
+   wall. Constructive generation guarantees it's solvable.
+7. ⌨️ **Typing Sprint** — type the passage exactly; wrong keystrokes don't
+   advance.
+8. 🔢 **Numbers Rush** — the numbers 1–36 scattered on a 6×6 grid. Click them
+   in order.
 
 The clock starts when you hit *Start* and doesn't stop until stage 3 is done.
 Splits are shown per stage, your daily best and streak are saved in your

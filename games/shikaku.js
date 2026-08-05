@@ -3,7 +3,7 @@
 (() => {
   'use strict';
 
-  const SIZE = 7;
+  const SIZE = 9;
 
   function create(container, { rng, onWin }) {
     const puzzle = window.ShikakuCore.generatePuzzle(
