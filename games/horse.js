@@ -28,24 +28,66 @@
   // Build a board that is guaranteed solvable: grow a connected pen region
   // around the horse (kept off the border ring), and set the fence budget to
   // exactly that region's grass boundary. Water on the boundary is a free wall.
+  // A meandering river plus a few compact lakes. Water is a free wall, so
+  // generous water makes for much more interesting pens.
+  function genWater(rng) {
+    const water = new Uint8Array(N * N);
+    // River: start on a random edge, walk with momentum so it meanders.
+    const DIRS = [
+      [1, 0],
+      [-1, 0],
+      [0, 1],
+      [0, -1],
+    ];
+    let x;
+    let y;
+    if (rng() < 0.5) {
+      x = Math.floor(rng() * N);
+      y = rng() < 0.5 ? 0 : N - 1;
+    } else {
+      x = rng() < 0.5 ? 0 : N - 1;
+      y = Math.floor(rng() * N);
+    }
+    let dir = DIRS[Math.floor(rng() * 4)];
+    const len = 12 + Math.floor(rng() * 8);
+    for (let s = 0; s < len; s++) {
+      water[idx(x, y)] = 1;
+      if (rng() > 0.6) dir = DIRS[Math.floor(rng() * 4)];
+      x = Math.max(0, Math.min(N - 1, x + dir[0]));
+      y = Math.max(0, Math.min(N - 1, y + dir[1]));
+    }
+    // Lakes: 2-4 compact blobs.
+    const lakes = 2 + Math.floor(rng() * 3);
+    for (let l = 0; l < lakes; l++) {
+      const blob = [Math.floor(rng() * N * N)];
+      const size = 3 + Math.floor(rng() * 4);
+      while (blob.length < size) {
+        const from = blob[Math.floor(rng() * blob.length)];
+        const ns = orthNeighbors(from);
+        blob.push(ns[Math.floor(rng() * ns.length)]);
+      }
+      for (const c of blob) water[c] = 1;
+    }
+    return water;
+  }
+
   function generate(rng) {
     for (let attempt = 0; attempt < 300; attempt++) {
-      const water = new Uint8Array(N * N);
-      const blobCount = 2 + (rng() < 0.5 ? 1 : 0);
-      for (let b = 0; b < blobCount; b++) {
-        let c = Math.floor(rng() * N * N);
-        const len = 3 + Math.floor(rng() * 4);
-        for (let s = 0; s < len; s++) {
-          water[c] = 1;
-          const ns = orthNeighbors(c);
-          c = ns[Math.floor(rng() * ns.length)];
-        }
-      }
+      const water = genWater(rng);
+      let waterCount = 0;
+      for (let i = 0; i < N * N; i++) waterCount += water[i];
+      if (waterCount < 12 || waterCount > 26) continue;
 
       const hx = 2 + Math.floor(rng() * 5);
       const hy = 2 + Math.floor(rng() * 5);
       const horse = idx(hx, hy);
       if (water[horse]) continue;
+
+      // The horse must start free (water alone can't pen it — that'd be
+      // boring) and must have a decent amount of grass to play with.
+      const free = reachable(horse, water, new Uint8Array(N * N));
+      if (!free.escaped) continue;
+      if (free.cells.size < 22) continue;
 
       const growSize = 12 + Math.floor(rng() * 6);
       const region = new Set([horse]);
