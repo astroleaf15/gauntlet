@@ -47,9 +47,9 @@
       const horse = idx(hx, hy);
       if (water[horse]) continue;
 
-      const target = 12 + Math.floor(rng() * 6);
+      const growSize = 12 + Math.floor(rng() * 6);
       const region = new Set([horse]);
-      while (region.size < target) {
+      while (region.size < growSize) {
         const cands = [];
         for (const r of region) {
           for (const n of orthNeighbors(r)) {
@@ -77,9 +77,111 @@
       const comp = reachable(horse, water, fence);
       if (comp.escaped || comp.cells.size !== region.size) continue;
 
-      return { water, horse, budget, target: region.size };
+      // The win condition is the OPTIMAL pen: find the biggest enclosure this
+      // budget allows (seeded search, so every player gets the same target).
+      // Two independent search runs, keep the better result.
+      const target = Math.max(
+        maxPen(water, horse, budget, rng, region),
+        maxPen(water, horse, budget, rng, null)
+      );
+      return { water, horse, budget, target };
     }
     return null;
+  }
+
+  function penCost(R, water) {
+    const b = new Set();
+    for (const r of R) {
+      for (const n of orthNeighbors(r)) {
+        if (!R.has(n) && !water[n]) b.add(n);
+      }
+    }
+    return b.size;
+  }
+
+  // Best pen area achievable within the fence budget. Epsilon-greedy region
+  // growth (prefer additions that keep the fence boundary small) from fresh
+  // starts, then basin hopping: carve a few cells off the best region found
+  // and regrow. Any region returned is achievable by fencing its boundary,
+  // so the target is never unreachable.
+  function maxPen(water, horse, budget, rng, seedRegion) {
+    function grow(R) {
+      for (;;) {
+        const cands = new Set();
+        for (const r of R) {
+          for (const n of orthNeighbors(r)) {
+            if (!R.has(n) && !water[n] && !isEdge(n)) cands.add(n);
+          }
+        }
+        if (!cands.size) return;
+        const fitting = [];
+        let bestCost = Infinity;
+        let bestMoves = [];
+        for (const c of cands) {
+          R.add(c);
+          const cost = penCost(R, water);
+          R.delete(c);
+          if (cost > budget) continue;
+          fitting.push(c);
+          if (cost < bestCost) {
+            bestCost = cost;
+            bestMoves = [c];
+          } else if (cost === bestCost) {
+            bestMoves.push(c);
+          }
+        }
+        if (!fitting.length) return;
+        const pool = rng() < 0.3 ? fitting : bestMoves;
+        R.add(pool[Math.floor(rng() * pool.length)]);
+      }
+    }
+
+    function staysConnected(R) {
+      const seen = new Set([horse]);
+      const stack = [horse];
+      while (stack.length) {
+        const c = stack.pop();
+        for (const n of orthNeighbors(c)) {
+          if (R.has(n) && !seen.has(n)) {
+            seen.add(n);
+            stack.push(n);
+          }
+        }
+      }
+      return seen.size === R.size;
+    }
+
+    // Several independent search phases; the target is the best across all
+    // of them. Within a phase the walk drifts across equal-size plateaus,
+    // which is what lets it slip out of local optima.
+    let bestSize = 1;
+    for (let phase = 0; phase < 4; phase++) {
+      let base = null;
+      for (let s = 0; s < 25; s++) {
+        const R =
+          phase === 0 && s === 0 && seedRegion ? new Set(seedRegion) : new Set([horse]);
+        grow(R);
+        if (penCost(R, water) <= budget && (!base || R.size > base.size)) base = R;
+      }
+      if (!base) continue;
+      if (base.size > bestSize) bestSize = base.size;
+      for (let s = 0; s < 90; s++) {
+        const R = new Set(base);
+        const carve = 2 + Math.floor(rng() * 7);
+        for (let j = 0; j < carve; j++) {
+          const cands = [...R].filter((c) => c !== horse);
+          if (!cands.length) break;
+          const c = cands[Math.floor(rng() * cands.length)];
+          R.delete(c);
+          if (!staysConnected(R)) R.add(c);
+        }
+        grow(R);
+        if (penCost(R, water) > budget) continue;
+        if (R.size >= base.size) base = R;
+        if (R.size > bestSize) bestSize = R.size;
+      }
+    }
+    return bestSize;
   }
 
   // Flood from the horse through grass (no water, no fence). Reports the
@@ -113,11 +215,11 @@
 
     container.innerHTML = `
       <div class="stage-top">
-        <span class="stage-hint">Fences: <b class="hp-used">0</b>/<b>${budget}</b> · pen ≥ <b>${target}</b> tiles</span>
+        <span class="stage-hint">Fences: <b class="hp-used">0</b>/<b>${budget}</b> · pen target: <b>${target}</b> tiles</span>
         <button class="btn primary small hp-release">Release the horse 🐴</button>
       </div>
       <div class="hp-grid"></div>
-      <p class="hp-msg">Tap grass to place fences. Water is a free wall — the horse can't swim.</p>
+      <p class="hp-msg">Fence the horse into a pen of at least <b>${target}</b> tiles — the most these fences allow. Water is a free wall.</p>
     `;
     const gridEl = container.querySelector('.hp-grid');
     const usedEl = container.querySelector('.hp-used');
@@ -181,12 +283,13 @@
       }
       if (comp.cells.size < target) {
         for (const c of comp.cells) cells[c].classList.add('hp-penned');
-        msgEl.textContent = `Penned, but only ${comp.cells.size} tiles — the horse needs ≥ ${target}.`;
+        const pct = Math.floor((comp.cells.size / target) * 100);
+        msgEl.textContent = `Penned ${comp.cells.size} / ${target} tiles (${pct}%) — a bigger pen is possible. Rearrange and retry!`;
         return;
       }
       done = true;
       for (const c of comp.cells) cells[c].classList.add('hp-penned');
-      msgEl.textContent = `🐴 Happily penned in ${comp.cells.size} tiles!`;
+      msgEl.textContent = `🐴 Perfect pen — ${comp.cells.size} tiles!`;
       setTimeout(onWin, 500);
     };
 
@@ -204,8 +307,8 @@
     key: 'horse',
     name: 'Horse Pen',
     icon: '🐴',
-    blurb: 'Fence the horse in before it bolts — limited fences, and it needs room to graze.',
+    blurb: 'Fence the horse into the biggest possible pen — anything less than the max means try again.',
     create,
-    _test: { N, generate, reachable },
+    _test: { N, generate, reachable, maxPen, penCost },
   };
 })();

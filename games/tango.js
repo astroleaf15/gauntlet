@@ -132,7 +132,21 @@
     return { sol, givens, edges };
   }
 
-  const GLYPHS = ['☀️', '🌙'];
+  // Crisp themed icons instead of emoji: yellow sun, blue moon.
+  const SUN_SVG =
+    '<svg class="tg-icon tg-sun" viewBox="0 0 24 24" aria-label="sun">' +
+    '<circle cx="12" cy="12" r="4.6" fill="currentColor"/>' +
+    '<g stroke="currentColor" stroke-width="2.2" stroke-linecap="round">' +
+    '<line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/>' +
+    '<line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/>' +
+    '<line x1="4.6" y1="4.6" x2="6.4" y2="6.4"/><line x1="17.6" y1="17.6" x2="19.4" y2="19.4"/>' +
+    '<line x1="4.6" y1="19.4" x2="6.4" y2="17.6"/><line x1="17.6" y1="6.4" x2="19.4" y2="4.6"/>' +
+    '</g></svg>';
+  const MOON_SVG =
+    '<svg class="tg-icon tg-moon" viewBox="0 0 24 24" aria-label="moon">' +
+    '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="currentColor"/>' +
+    '</svg>';
+  const GLYPHS = [SUN_SVG, MOON_SVG];
 
   function create(container, { rng, onWin }) {
     const { givens, edges } = generate(rng);
@@ -141,7 +155,7 @@
 
     container.innerHTML = `
       <div class="stage-top">
-        <span class="stage-hint">3 ☀️ + 3 🌙 per row/col · never 3 alike together · <b>=</b> match, <b>×</b> differ</span>
+        <span class="stage-hint">3 suns + 3 moons per row/col · never 3 alike · <b>=</b> match, <b>×</b> differ</span>
         <button class="btn subtle small tg-clear">Clear</button>
       </div>
       <div class="tg-wrap"><div class="tg-grid"></div></div>
@@ -210,7 +224,7 @@
       const bad = violations();
       for (let i = 0; i < N * N; i++) {
         const b = cells[i];
-        b.textContent = grid[i] === -1 ? '' : GLYPHS[grid[i]];
+        b.innerHTML = grid[i] === -1 ? '' : GLYPHS[grid[i]];
         b.classList.toggle('tg-bad', bad.has(i));
       }
       if (!done && bad.size === 0 && !grid.includes(-1)) {
