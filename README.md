@@ -2,7 +2,7 @@
 
 **Play it here → [astroleaf15.github.io/gauntlet](https://astroleaf15.github.io/gauntlet/)**
 
-Three quick puzzle games, played back to back, on **one clock**. Everyone in
+Eight quick puzzle games, played back to back, on **one clock**. Everyone in
 the world gets the same daily run — how fast can you finish?
 
 ## Today's stages
@@ -31,7 +31,7 @@ the world gets the same daily run — how fast can you finish?
 8. 🔢 **Numbers Rush** — the numbers 1–36 scattered on a 6×6 grid. Click them
    in order.
 
-The clock starts when you hit *Start* and doesn't stop until stage 3 is done.
+The clock starts when you hit *Start* and doesn't stop until the final stage is done.
 Splits are shown per stage, your daily best and streak are saved in your
 browser, and there's a share button for bragging.
 

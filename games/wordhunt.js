@@ -108,9 +108,15 @@
         <span class="stage-hint wh-current">&nbsp;</span>
       </div>
       <div class="wh-bar"><div class="wh-bar-fill"></div></div>
-      <div class="wh-grid"></div>
+      <div class="wh-wrap">
+        <div class="wh-grid"></div>
+        <canvas class="wh-canvas"></canvas>
+      </div>
       <div class="wh-found"></div>
     `;
+    const wrapEl = container.querySelector('.wh-wrap');
+    const canvas = container.querySelector('.wh-canvas');
+    const traceCtx = canvas.getContext('2d');
     const gridEl = container.querySelector('.wh-grid');
     const scoreEl = container.querySelector('.wh-score');
     const currentEl = container.querySelector('.wh-current');
@@ -128,6 +134,50 @@
 
     function chainWord() {
       return chain.map((i) => tiles[i]).join('');
+    }
+
+    // The trace line: drawn through the centers of the chained tiles while
+    // dragging, flashed green/red on release so you can see the word's shape.
+    let traceTimer = null;
+    function drawTrace(indices, color) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = wrapEl.getBoundingClientRect();
+      if (!rect.width) return;
+      if (canvas.width !== Math.round(rect.width * dpr)) {
+        canvas.width = Math.round(rect.width * dpr);
+        canvas.height = Math.round(rect.height * dpr);
+      }
+      traceCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      traceCtx.clearRect(0, 0, rect.width, rect.height);
+      if (indices.length === 0) return;
+      const pts = indices.map((i) => {
+        const r = cellEls[i].getBoundingClientRect();
+        return [r.left - rect.left + r.width / 2, r.top - rect.top + r.height / 2];
+      });
+      traceCtx.lineWidth = Math.max(6, pts.length ? cellEls[0].getBoundingClientRect().width * 0.14 : 8);
+      traceCtx.lineCap = 'round';
+      traceCtx.lineJoin = 'round';
+      traceCtx.strokeStyle = color;
+      traceCtx.fillStyle = color;
+      traceCtx.globalAlpha = 0.6;
+      traceCtx.beginPath();
+      traceCtx.moveTo(pts[0][0], pts[0][1]);
+      for (let k = 1; k < pts.length; k++) traceCtx.lineTo(pts[k][0], pts[k][1]);
+      traceCtx.stroke();
+      for (const [x, y] of pts) {
+        traceCtx.beginPath();
+        traceCtx.arc(x, y, traceCtx.lineWidth * 0.55, 0, Math.PI * 2);
+        traceCtx.fill();
+      }
+      traceCtx.globalAlpha = 1;
+    }
+    function traceColor() {
+      return getComputedStyle(document.documentElement).getPropertyValue('--accent-2').trim();
+    }
+    function flashTrace(color) {
+      clearTimeout(traceTimer);
+      drawTrace(chain, color);
+      traceTimer = setTimeout(() => drawTrace([], '#000'), 300);
     }
 
     function updateCurrent() {
@@ -172,6 +222,8 @@
       dragging = true;
       chain = [t];
       cellEls[t].classList.add('wh-sel');
+      clearTimeout(traceTimer);
+      drawTrace(chain, traceColor());
       updateCurrent();
     };
     const onMove = (e) => {
@@ -183,12 +235,14 @@
       if (chain.length > 1 && t === chain[chain.length - 2]) {
         cellEls[last].classList.remove('wh-sel');
         chain.pop();
+        drawTrace(chain, traceColor());
         updateCurrent();
         return;
       }
       if (!chain.includes(t) && NEIGHBORS[last].includes(t)) {
         chain.push(t);
         cellEls[t].classList.add('wh-sel');
+        drawTrace(chain, traceColor());
         updateCurrent();
       }
     };
@@ -201,6 +255,7 @@
         found.push(w);
         score += wordPoints(w);
         setChainClass('wh-good');
+        flashTrace('#5c9c46');
         scoreEl.textContent = score;
         barEl.style.width = Math.min(100, (score / TARGET) * 100) + '%';
         const chip = document.createElement('span');
@@ -213,6 +268,11 @@
         }
       } else if (w.length >= 3) {
         setChainClass('wh-bad');
+        flashTrace(
+          getComputedStyle(document.documentElement).getPropertyValue('--bad-stroke').trim()
+        );
+      } else {
+        drawTrace([], '#000');
       }
       chain = [];
       updateCurrent();
@@ -225,6 +285,7 @@
 
     return {
       destroy() {
+        clearTimeout(traceTimer);
         container.innerHTML = '';
       },
     };

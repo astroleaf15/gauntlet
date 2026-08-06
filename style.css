@@ -443,12 +443,20 @@ main { width: 100%; max-width: 560px; }
   border-radius: 3px;
   transition: width 0.25s ease;
 }
+.wh-wrap { position: relative; margin-bottom: 12px; }
+.wh-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 2;
+}
 .wh-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   touch-action: none;
-  margin-bottom: 12px;
 }
 .wh-cell {
   aspect-ratio: 1;

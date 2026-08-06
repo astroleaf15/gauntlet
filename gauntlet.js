@@ -102,7 +102,7 @@
     screenEl.innerHTML = `
       <div class="panel intro">
         <p class="intro-date">${nice}</p>
-        <p class="intro-lead">Three quick puzzle games, back to back, on <b>one clock</b>. Everyone gets the same daily run — how fast can you finish?</p>
+        <p class="intro-lead">${STAGES.length} quick puzzle games, back to back, on <b>one clock</b>. Everyone gets the same daily run — how fast can you finish?</p>
         <ol class="stage-list">
           ${STAGES.map(
             (s, i) => `<li><span class="stage-ico">${s.icon}</span><div><b>${s.name}</b><span>${s.blurb}</span></div></li>`
@@ -121,7 +121,7 @@
           }</button>
           <button class="btn" id="startPractice">Practice run</button>
         </div>
-        <p class="intro-note">The clock starts immediately and doesn't stop until stage 3 is done. Hitting a mine just deals a new board.</p>
+        <p class="intro-note">The clock starts immediately and doesn't stop until the final stage is done. Hitting a mine just deals a new board.</p>
       </div>
     `;
     document.getElementById('startDaily').addEventListener('click', () => startRun(false));
