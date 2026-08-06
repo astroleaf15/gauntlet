@@ -257,7 +257,7 @@
 
     container.innerHTML = `
       <div class="stage-top">
-        <span class="stage-hint">Fences: <b class="hp-used">0</b>/<b>${budget}</b> · pen target: <b>${target}</b> tiles</span>
+        <span class="stage-hint">Fences: <b class="hp-used">0</b>/<b>${budget}</b> · pen: <b class="hp-pen">open</b> / <b>${target}</b> tiles needed</span>
         <button class="btn primary small hp-release">Release the horse 🐴</button>
       </div>
       <div class="hp-grid"></div>
@@ -265,6 +265,7 @@
     `;
     const gridEl = container.querySelector('.hp-grid');
     const usedEl = container.querySelector('.hp-used');
+    const penEl = container.querySelector('.hp-pen');
     const msgEl = container.querySelector('.hp-msg');
     const releaseBtn = container.querySelector('.hp-release');
     gridEl.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
@@ -293,6 +294,19 @@
       for (const b of cells) b.classList.remove('hp-escape', 'hp-penned');
     }
 
+    // Live readout: how big is the pen right now (or "open" if the horse
+    // can still reach the edge), so the player always knows where they stand.
+    function updatePen() {
+      const comp = reachable(horse, water, fence);
+      if (comp.escaped) {
+        penEl.textContent = 'open';
+        penEl.classList.remove('hp-ok');
+      } else {
+        penEl.textContent = comp.cells.size;
+        penEl.classList.toggle('hp-ok', comp.cells.size >= target);
+      }
+    }
+
     const onClick = (e) => {
       const t = e.target.closest('.hp-cell');
       if (!t || done) return;
@@ -311,6 +325,7 @@
         t.classList.add('hp-fence');
       }
       usedEl.textContent = usedCount();
+      updatePen();
       msgEl.textContent = ' ';
     };
 
@@ -337,6 +352,7 @@
 
     gridEl.addEventListener('click', onClick);
     releaseBtn.addEventListener('click', onRelease);
+    updatePen();
 
     return {
       destroy() {

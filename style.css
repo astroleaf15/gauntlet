@@ -332,6 +332,7 @@ main { width: 100%; max-width: 560px; }
 .hp-cell.hp-escape { background: var(--bad-fill); box-shadow: inset 0 0 0 2px var(--bad-stroke); }
 .hp-cell.hp-penned { box-shadow: inset 0 0 0 2px #5c9c46; }
 .hp-msg { margin: 10px 2px 0; font-size: 0.88rem; color: var(--ink-soft); min-height: 1.2em; }
+.hp-pen.hp-ok { color: #5c9c46; }
 
 /* --- Zip --- */
 
